@@ -1,136 +1,226 @@
+# Time Series Analysis & Advanced Trading Strategies
+
 ## Overview
-A high-performance copy trading bot for PumpFun DEX on Solana, written in Rust 🦀. The bot monitors specific wallets and automatically replicates their trading activities with configurable parameters and advanced features like Jito MEV integration.
-![image](https://github.com/user-attachments/assets/028fc094-7edb-44d7-a704-e69960827713)
 
+This implementation enhances the existing pump.fun token trading bot with comprehensive time series analysis capabilities, sophisticated entry and exit criteria, advanced risk management, and market-aware trading strategies.
 
-![image](https://github.com/user-attachments/assets/04f19cc4-c2ff-40ca-aa8e-80ad387a73a1)
+## Key Components
 
-![image](https://github.com/user-attachments/assets/028dabb0-6f34-404e-9495-3fdf94835104)
+### Time Series Analysis Module
+- **Data Collection**: Efficiently captures and stores token price, volume, and transaction history.
+- **Technical Indicators**: Calculates various technical indicators including:
+  - Simple Moving Averages (SMA) - 5, 10, 20, 50 periods
+  - Exponential Moving Averages (EMA) - 5, 10, 20, 50 periods
+  - Relative Strength Index (RSI)
+  - Moving Average Convergence Divergence (MACD)
+  - Bollinger Bands
+  - Price Momentum
+  - Rate of Change
+- **Signal Generation**: Produces actionable buy/sell signals with confidence scores.
+- **Serialization Support**: Properly handles data persistence with serializable types.
 
+### Enhanced Entry Criteria
+- **Momentum-Based Entry**: Identifies tokens with positive price momentum.
+- **Buy/Sell Ratio Analysis**: Favors tokens with strong buying pressure.
+- **RSI Conditions**: Buys oversold tokens (RSI < 30) and sells overbought tokens (RSI > 70).
+- **Moving Average Crossovers**: Detects golden crosses (short-term MA crossing above long-term MA) for entries.
+- **Bollinger Band Rebounds**: Identifies price rebounds from lower Bollinger Band.
+- **Token Age Verification**: Validates that tokens are indeed new launches.
 
-# Solana PumpFun Copy Trading Bot in Rust 🚀
+### Dynamic Exit Strategies
+- **Volatility-Adjusted Take Profit**: Sets take profit levels based on Bollinger Band width.
+- **Multiple Profit Targets**: Implements partial exits at various profit levels.
+- **Trailing Stops**: Dynamically adjusts stop loss as price increases.
+- **Time-Based Exit Adjustments**: Tightens stops the longer a position is held.
 
-## Key Features
+### Advanced Risk Management
+- **Position Sizing**: Calculates position size based on:
+  - Technical indicator confidence levels
+  - Portfolio risk percentage
+  - Token volatility
+- **Daily Budget Controls**: Enforces maximum daily exposure.
+- **Risk-Adjusted Stop Losses**: Tighter stops for higher-risk tokens.
 
-### 🚀 Performance & Architecture
-- **Rust-Powered Performance**: Built with Rust for optimal speed and memory safety
-- **Dual Monitoring Modes**: 
-  - gRPC streaming via Yellowstone/InstantNodes
-  - WebSocket-based wallet monitoring
-- **Asynchronous Architecture**: Using Tokio for non-blocking operations
+### Bonding Curve Analysis
+- **Curve Steepness Evaluation**: Identifies optimal entry points on bonding curves.
+- **Liquidity Depth Analysis**: Ensures sufficient liquidity before trade execution.
+- **Price Impact Calculation**: Estimates slippage for different position sizes.
 
-### 🔒 Security & Configuration
-- **Environment-Based Setup**: Secure configuration via `.env` file
-- **Robust Error Handling**: Comprehensive error management and logging
-- **Configurable Parameters**: Customizable slippage, amounts, and monitoring settings
+## Configuration Parameters
 
-### 📊 Trading Features
-- **Smart Copy Trading**: 
-  - Automatic trade detection and replication
-  - Configurable trade size (default: 50% of detected amount)
-  - Support for both buy and sell operations
-- **PumpFun DEX Integration**: 
-  - Direct interaction with PumpFun bonding curves
-  - Automatic token account creation and management
-- **Jito MEV Integration**: Enhanced transaction priority
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| MIN_BUY_CONFIDENCE | 65 | Minimum confidence score to execute a buy (0-100) |
+| MIN_SELL_CONFIDENCE | 70 | Minimum confidence score to execute a sell (0-100) |
+| DAILY_BUY_BUDGET | 2.0 | Maximum SOL to spend per day |
+| MAX_TIME_SERIES_POINTS | 100 | Number of data points to store per token |
+| TIME_SERIES_INTERVAL_SECS | 15 | Interval between data points in seconds |
+| TAKE_PROFIT_PERCENT | 20.0 | Default take profit percentage |
+| STOP_LOSS_PERCENT | 10.0 | Default stop loss percentage |
 
-## Directory Structure
+## Integration
 
-```
-src/
-├── common/                 # Common utilities and shared components
-│   ├── logger.rs          # Logging system with colored output
-│   └── utils.rs           # Configuration and utility functions
-├── dex/                   # DEX integration components
-│   └── pump_fun.rs        # PumpFun DEX interaction logic
-├── engine/                # Core trading engine
-│   └── monitor/           # Transaction monitoring systems
-│       ├── grpc_monitor.rs    # gRPC-based monitoring
-│       └── wallet_monitor.rs  # WebSocket-based monitoring
-├── services/              # External service integrations
-│   └── jito.rs           # Jito MEV service integration
-└── proto/                 # Protocol definitions
-    └── instantnode.rs     # InstantNode gRPC client implementation
-```
+The time series analysis module seamlessly integrates with the existing token trading system:
 
-## Environment Variables
-
-```env
-# Required Configuration
-PRIVATE_KEY=<your_base58_private_key>
-RPC_HTTPS=<your_rpc_endpoint>
-RPC_WSS=<your_websocket_endpoint>
-RPC_GRPC=<your_grpc_endpoint>
-RPC_TOKEN=<your_rpc_auth_token>
-
-# Optional Configuration
-SLIPPAGE=10               # Slippage tolerance in percentage
-LOG_LEVEL=debug          # Logging level (debug/info/error)
-```
+1. **Data Collection**: Token data is continuously collected from the token tracker.
+2. **Signal Generation**: Technical analysis generates buy/sell signals with confidence scores.
+3. **Buy Execution**: High-confidence buy signals are routed to the buy manager.
+4. **Dynamic Exit Parameters**: Exit parameters are adjusted based on market conditions.
+5. **Sell Execution**: Sell signals trigger the sell manager with optimized parameters.
 
 ## Usage
 
-1. **Installation**
-   ```bash
-   git clone <repository_url>
-   cd solana-pumpfun-bot
-   cargo build --release
-   ```
+The enhanced trading system can be started using:
 
-2. **Configuration**
-   - Copy `.env.example` to `.env`
-   - Configure your environment variables
-
-3. **Running the Bot**
-   ```bash
-   cargo run --release
-   ```
-
-### Monitoring Modes
-
-#### gRPC Monitoring
-```bash
-# Monitor PumpFun transactions
-cargo run -- --endpoint $RPC_GRPC --x-token $RPC_TOKEN subscribe \
-  --transactions \
-  --transactions-vote false \
-  --transactions-failed false \
-  --transactions-account-include "o7RY6P2vQMuGSu1TrLM81weuzgDjaCRTXYRaXJwWcvc"
+```rust
+start_enhanced_trading_system(
+    app_state,
+    swap_config,
+    blacklist_enabled,
+    take_profit_percent,
+    stop_loss_percent,
+    telegram_bot_token,
+    telegram_chat_id,
+).await
 ```
 
-#### WebSocket Monitoring
-```bash
-# Monitor wallet updates
-cargo run -- --ws-url $RPC_WSS monitor-wallet
+## Technical Indicator Implementation Details
+
+### Simple Moving Average (SMA)
+Calculates the average price over a specified period.
+
+```rust
+fn calculate_sma(&self, prices: &[f64], period: usize) -> f64 {
+    if prices.len() < period {
+        return 0.0;
+    }
+    
+    let sum: f64 = prices[prices.len() - period..].iter().sum();
+    sum / period as f64
+}
 ```
 
-## Technical Details
+### Exponential Moving Average (EMA)
+Gives more weight to recent prices for faster response to price changes.
 
-### Trading Logic
-- The bot monitors specified wallets for PumpFun DEX interactions
-- Upon detecting a trade:
-  1. Extracts transaction details (mint, amount, direction)
-  2. Validates the trading parameters
-  3. Executes a copy trade with configured parameters
-  - For buys: Uses 50% of virtual SOL reserves
-  - For sells: Uses 50% of available token balance
+```rust
+fn calculate_ema(&self, prices: &[f64], period: usize) -> f64 {
+    if prices.len() < period {
+        return 0.0;
+    }
+    
+    let mut ema = self.calculate_sma(prices, period);
+    let multiplier = 2.0 / (period as f64 + 1.0);
+    
+    for i in prices.len() - period + 1..prices.len() {
+        ema = (prices[i] - ema) * multiplier + ema;
+    }
+    
+    ema
+}
+```
 
-### Safety Features
-- Transaction validation and simulation
-- Automatic token account creation
-- Balance checks before execution
-- Comprehensive error handling and logging
+### Relative Strength Index (RSI)
+Measures the speed and change of price movements, indicating overbought/oversold conditions.
 
-### Logging System
-- Colored output for different message types
-- Transaction counting and tracking
-- Detailed timing information
-- Multiple log levels (DEBUG, INFO, ERROR, SUCCESS, WARNING)
+```rust
+fn calculate_rsi(&self, prices: &[f64], period: usize) -> f64 {
+    if prices.len() < period + 1 {
+        return 50.0; // Default to neutral
+    }
+    
+    let mut gains = 0.0;
+    let mut losses = 0.0;
+    
+    for i in prices.len() - period..prices.len() {
+        let change = prices[i] - prices[i - 1];
+        if change >= 0.0 {
+            gains += change;
+        } else {
+            losses -= change;
+        }
+    }
+    
+    if losses == 0.0 {
+        return 100.0; // All gains, no losses
+    }
+    
+    let rs = gains / losses;
+    100.0 - (100.0 / (1.0 + rs))
+}
+```
 
-## Support
+### Bollinger Bands
+Shows price volatility and potential reversal points using standard deviation.
 
-For support and inquiries, please connect via Telegram: 📞 [Benjamin](https://t.me/blockchainDeveloper_Ben)
+```rust
+fn calculate_bollinger_bands(&self, prices: &[f64], period: usize, std_dev_multiplier: f64) -> (f64, f64, f64) {
+    if prices.len() < period {
+        let price = prices.last().unwrap_or(&0.0);
+        return (*price, *price, *price);
+    }
+    
+    // Calculate SMA
+    let sma = self.calculate_sma(prices, period);
+    
+    // Calculate Standard Deviation
+    let price_slice = &prices[prices.len() - period..];
+    let sum_squares: f64 = price_slice.iter().map(|p| (p - sma).powi(2)).sum();
+    let std_dev = (sum_squares / period as f64).sqrt();
+    
+    // Calculate bands
+    let upper_band = sma + (std_dev_multiplier * std_dev);
+    let lower_band = sma - (std_dev_multiplier * std_dev);
+    
+    (sma, upper_band, lower_band)
+}
+```
 
-## License
+## Performance and Optimization
 
-MIT License
+The implementation is designed for efficiency with:
+
+- **Interval-Based Data Collection**: Controls data frequency to avoid excessive CPU usage.
+- **Fixed-Size Data Storage**: Limits memory usage by maintaining a fixed-size data window.
+- **Mutex Guards**: Properly managed to avoid deadlocks across async boundaries.
+- **Isolated Function Pattern**: Ensures MutexGuard isn't held across await points.
+- **Serializable Data Structures**: Time series data can be serialized for persistence.
+
+## Data Serialization
+
+To handle persistence, we've implemented serializable versions of our data structures:
+
+```rust
+// For internal use with timestamps
+#[derive(Debug, Clone)]
+pub struct TimeSeriesDataPoint {
+    pub timestamp: Instant,  // Non-serializable std::time::Instant
+    pub price: f64,
+    pub volume: f64,
+    pub buy_count: u32,
+    pub sell_count: u32,
+    pub market_cap: Option<f64>,
+    pub iso_timestamp: DateTime<Utc>,  // For serialization
+}
+
+// For persistence/serialization
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SerializableTimeSeriesDataPoint {
+    pub timestamp: String,  // ISO 8601 timestamp string
+    pub price: f64,
+    pub volume: f64,
+    pub buy_count: u32,
+    pub sell_count: u32,
+    pub market_cap: Option<f64>,
+}
+```
+
+## Extending the System
+
+The time series analysis system is designed for easy extension:
+
+1. **Adding New Indicators**: Implement additional technical indicators by adding new calculation methods.
+2. **Custom Signal Logic**: Develop sophisticated signal generation by modifying `generate_signals()`.
+3. **Risk Profile Integration**: Connect with external risk assessment systems for better position sizing.
+4. **Market-Wide Analysis**: Incorporate Solana ecosystem-wide metrics for market sentiment. 
+5. **Data Persistence**: Implement storage and retrieval using the serializable data structures. 
